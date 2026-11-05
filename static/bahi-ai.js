@@ -1,6 +1,7 @@
 /* Bahi AI advisor — chat UI. Runs on the full page (bahi-perfumes.com/apps/bahi-ai) and,
-   with CFG.embed, inside the floating chat window that every store page shows in an iframe.
-   Both share the conversation through localStorage (same origin). */
+   with CFG.embed, inside the floating chat window on every store page (theme snippet
+   bahi-ai-widget.liquid puts this markup into the page). Both share the conversation
+   through localStorage. The window and the snippet talk through 'bahi-ai:*' DOM events. */
 (function () {
   'use strict';
 
@@ -34,7 +35,7 @@
   var input = root.querySelector('[data-bahi-input]');
   var sendBtn = root.querySelector('[data-bahi-send]');
   var newBtn = root.querySelector('[data-bahi-new]');
-  var EMBED = !!CFG.embed && window.parent !== window;
+  var EMBED = !!CFG.embed;
 
   // ------------------------------------------------------------------ storage (cookies don't survive the proxy)
   function load(key, fallback) {
@@ -230,22 +231,16 @@
   }
 
   // ------------------------------------------------------------------ store page integration
-  // Open a store page in the whole tab, also from inside the floating window's iframe.
+  // Tell the floating window's snippet (close, leaving the page, ...).
+  function tellHost(type) { document.dispatchEvent(new CustomEvent('bahi-ai:' + type)); }
+
   function go(url) {
-    if (EMBED) window.parent.postMessage({ type: 'bahi-ai:leave' }, location.origin);
-    try { (window.top || window).location.href = url; } catch (e) { window.location.href = url; }
+    if (EMBED) tellHost('leave');
+    window.location.href = url;
   }
 
-  // Tell the theme the cart changed so its cart count / drawer refresh. In the floating
-  // window that happens in the store page around the iframe, so it is asked to do it.
-  function cartChanged(cart, variantId) {
-    if (EMBED) {
-      window.parent.postMessage({ type: 'bahi-ai:cart', cart: cart, variantId: variantId }, location.origin);
-      return;
-    }
-    themeCartEvent(document, cart, variantId);
-  }
-  // Same code as in the theme snippet (snippets/bahi-ai-widget.liquid).
+  // Tell the theme the cart changed so its cart count / drawer refresh.
+  function cartChanged(cart, variantId) { themeCartEvent(document, cart, variantId); }
   function themeCartEvent(doc, cart, variantId) {
     // Horizon listens for Shopify's standard cart event (importmap: @shopify/events).
     import('@shopify/events').then(function (m) {
@@ -485,20 +480,18 @@
   if (EMBED) {
     var closeBtn = root.querySelector('[data-bahi-close]');
     var expand = root.querySelector('[data-bahi-expand]');
-    function closeWindow() { window.parent.postMessage({ type: 'bahi-ai:close' }, location.origin); }
-    if (closeBtn) closeBtn.addEventListener('click', closeWindow);
+    if (closeBtn) closeBtn.addEventListener('click', function () { tellHost('close'); });
     if (expand) {
       expand.href = CFG.pageUrl || '/apps/bahi-ai';
-      expand.addEventListener('click', function () { window.parent.postMessage({ type: 'bahi-ai:leave' }, location.origin); });
+      expand.addEventListener('click', function () { tellHost('leave'); });
     }
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeWindow(); });
-    // The store page tells the window when it is shown, so the cursor lands in the box.
-    window.addEventListener('message', function (e) {
-      if (e.origin === location.origin && e.data && e.data.type === 'bahi-ai:shown' && !matchMedia('(pointer: coarse)').matches) {
-        input.focus({ preventScroll: true });
-      }
+    // The snippet says when the window is shown, so the cursor lands in the box (not on
+    // phones, where that would pop the keyboard over the welcome message).
+    document.addEventListener('bahi-ai:shown', function () {
+      if (!matchMedia('(pointer: coarse)').matches) input.focus({ preventScroll: true });
     });
   }
 
   if (!resumePending()) render();
+  if (EMBED) tellHost('ready');
 })();

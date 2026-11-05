@@ -36,7 +36,6 @@ def _read(*parts):
 
 SHELL = _read("templates", "shell.html")
 DEV_PAGE = _read("templates", "dev.html")
-EMBED_PAGE = _read("templates", "embed.html")
 # The floating chat window on every store page (theme snippet), for the /dev/widget preview.
 WIDGET_SNIPPET = os.path.join(HERE, "..", "theme_src", "snippets", "bahi-ai-widget.liquid")
 ASSET_VERSION = hashlib.sha1(
@@ -144,13 +143,14 @@ def _liquid_config(prefix, embed):
 @app.get("/")
 @from_store
 def page():
-    """The chat page inside the store theme, or with ?embed=1 the bare chat (no theme header
-    or footer) that the floating window on every store page shows in an iframe."""
+    """The chat page inside the store theme, or with ?embed=1 just the chat markup (no theme
+    layout), which the floating window on every store page fetches and puts into the page.
+    (Not an iframe: Shopify sends X-Frame-Options: DENY on every storefront response.)"""
     prefix = _prefix()
     embed = request.args.get("embed") == "1"
     shell = _shell(prefix, _liquid_config(prefix, embed), embed)
     if embed:
-        body = "{%- layout none -%}" + LIQUID_HEAD + EMBED_PAGE.replace("__SHELL__", shell)
+        body = "{%- layout none -%}" + LIQUID_HEAD + shell
     else:
         body = LIQUID_HEAD + shell
     return Response(body, content_type="application/liquid; charset=utf-8",
@@ -192,7 +192,7 @@ def dev_page():
     cfg = {"apiBase": "", "pageUrl": "/dev", "embed": embed, "customerName": request.args.get("name", ""),
            "cartUrl": "/cart", "cartAddUrl": "/cart/add", "offerPct": pct, "products": prods, "dev": True}
     shell = _shell("", json.dumps(cfg, ensure_ascii=False), embed)
-    html = (EMBED_PAGE if embed else DEV_PAGE).replace("__SHELL__", shell)
+    html = shell if embed else DEV_PAGE.replace("__SHELL__", shell)
     return Response(html, content_type="text/html; charset=utf-8")
 
 
@@ -208,6 +208,8 @@ def dev_widget():
     html = ('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             '<title>معاينة نافذة باهي</title>'
+            '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@400..700&family=Tajawal:wght@400;500;700&display=swap">'
+            "<style>:root{--font-body--family:'Tajawal',sans-serif;--font-heading--family:'Reem Kufi',sans-serif}</style>"
             '<script type="importmap">{"imports":{"@shopify/events":"https://cdn.shopify.com/storefront/standard-events.js"}}</script>'
             # ?demo=1 loads the sample chat from dev.html (no AI call), ?open=1 opens the window,
             # ?teaser=1 shows the teaser bubble right away.

@@ -213,8 +213,8 @@
 .bahi-ai__actions { display: flex; align-items: center; gap: 4px; }
 .bahi-ai__embed-only { display: none !important; }
 
-/* ---------- floating window (iframe on every store page, ?embed=1) ---------- */
-.bahi-ai.bahi-ai--embed { position: fixed; inset: 0; padding: 0; background: var(--bahi-parchment); }
+/* ---------- floating window on every store page (?embed=1, inside the snippet's panel) ---------- */
+.bahi-ai.bahi-ai--embed { position: absolute; inset: 0; margin: 0; padding: 0; background: var(--bahi-parchment); line-height: normal; }
 .bahi-ai--embed .bahi-ai__inner { max-width: none; height: 100%; }
 .bahi-ai--embed .bahi-ai__head { display: none; }
 .bahi-ai--embed .bahi-ai__embed-only { display: inline-flex !important; }
