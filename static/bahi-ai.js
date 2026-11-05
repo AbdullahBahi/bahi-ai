@@ -13,6 +13,8 @@
   var MAX_SEND = 16;       // messages sent to the server per question
   var MAX_CHARS = 800;
   var POLL_MS = 600;
+  var MAX_WAIT_MS = 150000; // the server gives up on an answer after ~2 minutes
+  var pollUntil = 0;
 
   var STARTERS = [
     'ساعدني ألاقي عطري المناسب',
@@ -344,6 +346,7 @@
       return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
     }).then(function (res) {
       if (!res.ok || !res.d.job) throw { userMessage: res.d.error };
+      pollUntil = Date.now() + MAX_WAIT_MS;
       poll(res.d.job, 0);
     }).catch(function (err) { fail(err && err.userMessage, text); });
   }
@@ -357,6 +360,7 @@
         if (!res.ok) throw { userMessage: res.d.error, final: true };
         var d = res.d;
         if (d.status === 'running') {
+          if (Date.now() > pollUntil) throw { final: true };  // never spin for ever
           paintLive(d.text || '', d.activity || '');
           setTimeout(function () { poll(id, 0); }, POLL_MS);
         } else {

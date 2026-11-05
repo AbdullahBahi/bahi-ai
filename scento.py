@@ -10,6 +10,7 @@ import itertools, json, logging, re, threading, time
 import requests
 
 import config
+import net
 
 log = logging.getLogger("bahi-ai.scento")
 
@@ -55,7 +56,7 @@ def _rpc(method, params=None, notify=False, timeout=20):
         body["params"] = params
     if not notify:
         body["id"] = next(_ids)
-    r = requests.post(config.SCENTO_MCP_URL, json=body, headers=headers, timeout=timeout)
+    r = net.request("POST", config.SCENTO_MCP_URL, total=timeout, json=body, headers=headers)
     if r.headers.get("Mcp-Session-Id"):
         _state["session"] = r.headers["Mcp-Session-Id"]
     if notify:
@@ -93,9 +94,14 @@ def _to_openai(tool):
     }}
 
 
-def openai_tools():
-    """Function-tool definitions for the LLM; [] if Scento is unreachable (retried later)."""
-    with _lock:
+def openai_tools(wait=True):
+    """Function-tool definitions for the LLM; [] if Scento is unreachable (retried later).
+
+    With wait=False (used while answering a customer) it never blocks: if another thread
+    is loading the list right now, it answers with what is cached (possibly no tools)."""
+    if not _lock.acquire(blocking=wait):
+        return _state["tools"] or []
+    try:
         if _state["tools"] is not None and time.time() < _state["exp"]:
             return _state["tools"]
         try:
@@ -110,6 +116,8 @@ def openai_tools():
                 _state["tools"] = []
             _state["exp"] = time.time() + 300
         return _state["tools"]
+    finally:
+        _lock.release()
 
 
 def is_scento_tool(name):
@@ -139,9 +147,11 @@ def call(name, args):
         except Exception as e:
             log.warning("scento %s failed (attempt %d): %s", mcp_name, attempt + 1, e)
             if attempt == 0:  # a dropped/expired session: start a fresh one once
-                with _lock:
+                if _lock.acquire(timeout=15):
                     try:
                         _initialize()
                     except Exception:
                         pass
+                    finally:
+                        _lock.release()
     return "The perfume database is unavailable right now; answer from your own knowledge."

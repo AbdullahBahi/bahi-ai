@@ -6,12 +6,13 @@ customer message therefore runs as a background job: the browser starts it, then
 for the text written so far. That keeps the typing-as-it-thinks feel and also avoids
 proxy timeouts on long tool-using answers.
 """
-import json, logging, threading, time, uuid
+import json, logging, sys, threading, time, traceback, uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
 import config
+import net
 import prompts
 import scento
 import web_search
@@ -20,6 +21,7 @@ log = logging.getLogger("bahi-ai.agent")
 
 JOB_TTL = 15 * 60
 JOB_DEADLINE = 100  # seconds for a whole answer, tools included
+JOB_REAP = JOB_DEADLINE + 20  # a job still running after this is stuck: close it and log where
 
 ACTIVITY = {  # what the customer sees while a tool runs
     "web_search": "بدوّر على أحدث المعلومات…",
@@ -37,6 +39,8 @@ class Job:
         self.activity = ""
         self.created = time.time()
         self.lock = threading.Lock()
+        self.stage = "queued"  # where the worker thread is, for the logs if it gets stuck
+        self.thread_id = None
 
     def snapshot(self):
         with self.lock:
@@ -49,12 +53,34 @@ _jobs_lock = threading.Lock()
 
 def get_job(job_id):
     with _jobs_lock:
-        return _jobs.get(job_id)
+        job = _jobs.get(job_id)
+    if job:
+        _reap_if_stuck(job)
+    return job
+
+
+def _reap_if_stuck(job):
+    """Never let the customer wait for ever: a job past JOB_REAP is closed with the
+    fallback message, and the stuck thread's stack goes to the logs."""
+    with job.lock:
+        if job.status != "running" or time.time() - job.created < JOB_REAP:
+            return
+        job.status = "error"
+        job.activity = ""
+        if not job.text.strip():
+            job.text = FALLBACK_ERROR
+    frame = sys._current_frames().get(job.thread_id)
+    stack = "".join(traceback.format_stack(frame)) if frame else "(thread already gone)"
+    log.error("job %s stuck at stage=%s after %.0fs; stack:\n%s",
+              job.id[:8], job.stage, time.time() - job.created, stack)
 
 
 def running_job_for(client_key):
     with _jobs_lock:
-        return any(j.client_key == client_key and j.status == "running" for j in _jobs.values())
+        mine = [j for j in _jobs.values() if j.client_key == client_key and j.status == "running"]
+    for j in mine:
+        _reap_if_stuck(j)
+    return any(j.status == "running" for j in mine)
 
 
 def _gc():
@@ -103,13 +129,11 @@ def _stream_completion(messages, tools, job, allow_tools):
         visible_from = len(job.text)
     hidden = False
     with requests.post(config.OPENROUTER_URL, json=payload, headers=headers,
-                       stream=True, timeout=(10, 60)) as r:
+                       stream=True, timeout=(10, 30)) as r:
         if r.status_code != 200:
             raise RuntimeError(f"OpenRouter HTTP {r.status_code}: {r.text[:300]}")
-        r.encoding = "utf-8"
-        for line in r.iter_lines(decode_unicode=True):
-            if time.time() - job.created > JOB_DEADLINE:
-                raise TimeoutError("answer took too long")
+        deadline = time.monotonic() + JOB_DEADLINE - (time.time() - job.created)
+        for line in net.lines(r, deadline, "OpenRouter stream"):
             if not line or not line.startswith("data:"):
                 continue  # keep-alive comments like ": OPENROUTER PROCESSING"
             data = line[5:].strip()
@@ -176,9 +200,12 @@ def _activity_for(calls):
 # ----------------------------------------------------------------------------- loop
 
 def _run_safe(job, history, customer_name):
+    job.thread_id = threading.get_ident()
     try:
         _run(job, history, customer_name)
         with job.lock:
+            if job.status != "running":
+                return
             if not job.text.strip():
                 job.text = FALLBACK_ERROR
             job.status = "done"
@@ -193,13 +220,16 @@ def _run_safe(job, history, customer_name):
 
 
 def _run(job, history, customer_name):
-    tools = scento.openai_tools() + ([web_search.TOOL] if config.TAVILY_API_KEY else [])
+    job.stage = "loading tools"
+    tools = scento.openai_tools(wait=False) + ([web_search.TOOL] if config.TAVILY_API_KEY else [])
+    job.stage = "building prompt"
     messages = prompts.system_messages(customer_name) + history
     budget = {"web": 0, "lock": threading.Lock()}
     totals = {"prompt": 0, "completion": 0, "cost": 0.0, "steps": 0, "tools": []}
     try:
         for step in range(config.MAX_AGENT_STEPS):
             last = step == config.MAX_AGENT_STEPS - 1
+            job.stage = f"model call {step + 1}"
             content, calls, usage = _stream_completion(messages, tools, job, allow_tools=not last)
             totals["steps"] += 1
             if usage:
@@ -217,6 +247,7 @@ def _run(job, history, customer_name):
             with job.lock:
                 job.activity = _activity_for(calls)
             totals["tools"] += [c["name"] for c in calls]
+            job.stage = "tools: " + ",".join(c["name"] for c in calls)
             with ThreadPoolExecutor(max_workers=4) as pool:
                 results = list(pool.map(lambda c: _run_tool(c, budget), calls))
             for i, (c, res) in enumerate(zip(calls, results)):

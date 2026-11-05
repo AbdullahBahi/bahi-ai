@@ -134,4 +134,5 @@ python app.py
 | `web_search.py` | بحث Tavily |
 | `proxy_auth.py` | التحقق من توقيع App Proxy |
 | `limits.py` | حدود الاستخدام |
+| `net.py` | كل طلبات النت بحد أقصى للوقت (عشان مفيش رد يعلّق للأبد) |
 | `templates/` و `static/` | الواجهة |

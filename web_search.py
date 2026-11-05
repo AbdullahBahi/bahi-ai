@@ -5,6 +5,7 @@ import logging, time
 import requests
 
 import config
+import net
 
 log = logging.getLogger("bahi-ai.web")
 
@@ -35,7 +36,7 @@ def search(query):
     headers = {"Authorization": f"Bearer {config.TAVILY_API_KEY}"}
     for attempt in range(2):
         try:
-            r = requests.post(TAVILY_URL, json=body, headers=headers, timeout=15)
+            r = net.request("POST", TAVILY_URL, total=20, json=body, headers=headers)
             if r.status_code in (429, 500, 502, 503, 504) and attempt == 0:
                 time.sleep(1.5)
                 continue

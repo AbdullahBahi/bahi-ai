@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import requests
 
 import config
+import net
 
 log = logging.getLogger("bahi-ai.catalog")
 
@@ -31,7 +32,7 @@ def live_products():
         if _live["data"] is not None and time.time() < _live["exp"]:
             return _live["data"]
     try:
-        r = requests.get(f"{config.STORE_URL}/products.json", params={"limit": 50}, timeout=8)
+        r = net.request("GET", f"{config.STORE_URL}/products.json", total=10, params={"limit": 50})
         r.raise_for_status()
         data = {}
         for p in r.json().get("products", []):
