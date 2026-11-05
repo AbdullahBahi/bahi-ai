@@ -64,7 +64,19 @@ def _warm_up():
         log.warning("warm-up failed: %s", e)
 
 
-threading.Thread(target=_warm_up, daemon=True).start()
+# Started on the first request of the process that serves traffic, never at import time:
+# if gunicorn loads this module and then forks its worker, a thread started here would be
+# copied as a frozen half-done state (holding Python's import lock or our own locks), and
+# every answer would wait on it for ever.
+_warm = {"pid": None}
+
+
+@app.before_request
+def _ensure_warm():
+    pid = os.getpid()
+    if _warm["pid"] != pid:
+        _warm["pid"] = pid
+        threading.Thread(target=_warm_up, daemon=True).start()
 
 
 # ----------------------------------------------------------------------------- page

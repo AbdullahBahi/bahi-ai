@@ -10,6 +10,11 @@ customer's answer.
 """
 import time
 
+# requests imports these lazily inside each call. Importing them here, once, in the main
+# thread means no answer thread ever has to take Python's import lock mid-request.
+import encodings.idna  # noqa: F401
+import netrc  # noqa: F401
+
 import requests
 
 STEP = 10.0  # connect / between-bytes timeout
