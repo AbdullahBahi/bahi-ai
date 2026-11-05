@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: bahi-ai
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # One worker on purpose: answers run as in-memory background jobs that the browser
+    # polls, and the rate limits are in memory too. Threads handle concurrent customers.
+    startCommand: gunicorn app:app --workers 1 --threads 16 --timeout 120
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: SHOPIFY_PROXY_SECRET
+        sync: false

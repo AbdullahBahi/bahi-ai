@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مستشار باهي (معاينة محلية)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@400;500;600&family=Tajawal:wght@400;500;700&display=swap">
+<style>
+  :root { --font-body--family: 'Tajawal', sans-serif; --font-heading--family: 'Reem Kufi', sans-serif; }
+  body { margin: 0; background: #fff; color: #0B1E3A; }
+  .dev-header { background: #0B1E3A; color: #E8CD7A; padding: 18px 16px; text-align: center;
+                font-family: 'Reem Kufi', sans-serif; font-size: 22px; letter-spacing: 1px; }
+  .dev-header small { display: block; color: #F3EDE0; opacity: .7; font-family: 'Tajawal', sans-serif;
+                      font-size: 12px; letter-spacing: 0; margin-top: 4px; }
+</style>
+</head>
+<body>
+<script>
+  // /dev?demo=1 preloads a sample conversation (no AI call) to check the layout.
+  if (/[?&]demo=1/.test(location.search)) {
+    localStorage.setItem('bahi-ai:chat:v1', JSON.stringify([
+      { role: 'user', content: 'بحب Baccarat Rouge 540 بس عايز حاجة أدفى للشتا' },
+      { role: 'assistant', content: 'ذوقك حلو جدًا ✨ لو بتحب **Baccarat Rouge 540**، يبقى أقرب حاجة ليك عندنا هو **وهج**، لأنه مستوحى منه بنفس الزعفران والعنبر الخشبي المضيء.\n\n[[product:wahaj]]\n\nولو عايز دفا أكتر للشتا:\n- **لهب**: عسل وتبغ وفانيليا على قاعدة عود، دافي جدًا وفخم.\n- **سؤدد**: عود وزعفران، حضور قوي للمناسبات.\n\n[[product:lahab]]\n\nتحب تجرّب حجم 50 ولا 100 مل؟\n[[choices: 50 مل | 100 مل | قولّي الفرق بينهم]]' }
+    ]));
+  } else if (/[?&]reset=1/.test(location.search)) {
+    localStorage.removeItem('bahi-ai:chat:v1');
+  }
+  // /dev?ask=... sends that question on load (end-to-end test; costs one AI answer).
+  var ask = new URLSearchParams(location.search).get('ask');
+  if (ask) {
+    localStorage.removeItem('bahi-ai:chat:v1');
+    window.addEventListener('load', function () {
+      var input = document.querySelector('[data-bahi-input]');
+      input.value = ask;
+      document.querySelector('[data-bahi-form]').requestSubmit();
+    });
+  }
+</script>
+<div class="dev-header">باهي<small>معاينة محلية — هيدر وفوتر المتجر بيظهروا هنا في النسخة الحقيقية</small></div>
+__SHELL__
+</body>
+</html>
