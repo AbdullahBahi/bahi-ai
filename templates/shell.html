@@ -1,5 +1,5 @@
 <link rel="stylesheet" href="__CSS__">
-<section class="bahi-ai" id="bahi-ai" dir="rtl" lang="ar">
+<section class="bahi-ai __MODE__" id="bahi-ai" dir="rtl" lang="ar">
   <div class="bahi-ai__inner">
     <header class="bahi-ai__head">
       <p class="bahi-ai__eyebrow">مساعدك الشخصي في عالم العطور</p>
@@ -10,8 +10,25 @@
 
     <div class="bahi-ai__panel">
       <div class="bahi-ai__bar">
-        <span class="bahi-ai__status"><span class="bahi-ai__dot" aria-hidden="true"></span>متاح الآن</span>
-        <button type="button" class="bahi-ai__new" data-bahi-new hidden>محادثة جديدة</button>
+        <div class="bahi-ai__who">
+          <span class="bahi-ai__mark bahi-ai__embed-only" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9zM19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9z"/></svg>
+          </span>
+          <span class="bahi-ai__who-text">
+            <strong class="bahi-ai__name bahi-ai__embed-only">باهي</strong>
+            <span class="bahi-ai__status"><span class="bahi-ai__dot" aria-hidden="true"></span>متاح الآن</span>
+          </span>
+        </div>
+        <div class="bahi-ai__actions">
+          <button type="button" class="bahi-ai__new" data-bahi-new hidden>محادثة جديدة</button>
+          <a class="bahi-ai__icon bahi-ai__embed-only" data-bahi-expand href="/apps/bahi-ai" target="_top"
+             aria-label="افتح صفحة المحادثة الكاملة" title="افتح صفحة المحادثة الكاملة">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M5 5h6v2H8.4l4.3 4.3-1.4 1.4L7 8.4V11H5zm14 14h-6v-2h2.6l-4.3-4.3 1.4-1.4 4.3 4.3V13h2z"/></svg>
+          </a>
+          <button type="button" class="bahi-ai__icon bahi-ai__embed-only" data-bahi-close aria-label="إغلاق" title="إغلاق">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7l-1.4-1.4L9.2 12 2.9 5.7l1.4-1.4 6.3 6.3 6.3-6.3z"/></svg>
+          </button>
+        </div>
       </div>
       <div class="bahi-ai__log" data-bahi-log role="log" aria-live="polite" aria-label="المحادثة"></div>
       <form class="bahi-ai__composer" data-bahi-form>

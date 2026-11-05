@@ -36,6 +36,9 @@ def _read(*parts):
 
 SHELL = _read("templates", "shell.html")
 DEV_PAGE = _read("templates", "dev.html")
+EMBED_PAGE = _read("templates", "embed.html")
+# The floating chat window on every store page (theme snippet), for the /dev/widget preview.
+WIDGET_SNIPPET = os.path.join(HERE, "..", "theme_src", "snippets", "bahi-ai-widget.liquid")
 ASSET_VERSION = hashlib.sha1(
     (_read("static", "bahi-ai.js") + _read("static", "bahi-ai.css")).encode()).hexdigest()[:10]
 
@@ -92,8 +95,9 @@ def _asset(name, prefix):
     return f"{base}/static/{name}?v={ASSET_VERSION}"
 
 
-def _shell(prefix, config_js):
-    return (SHELL.replace("__CSS__", _asset("bahi-ai.css", prefix))
+def _shell(prefix, config_js, embed=False):
+    return (SHELL.replace("__MODE__", "bahi-ai--embed" if embed else "")
+                 .replace("__CSS__", _asset("bahi-ai.css", prefix))
                  .replace("__JS__", _asset("bahi-ai.js", prefix))
                  .replace("__CONFIG__", config_js))
 
@@ -117,7 +121,7 @@ LIQUID_HEAD = (
 )
 
 
-def _liquid_config(prefix):
+def _liquid_config(prefix, embed):
     prods = ",".join(
         LIQUID_PRODUCT.replace("__H__", p["handle"])
                       .replace("__NAME__", json.dumps(p["name"], ensure_ascii=False))
@@ -126,6 +130,8 @@ def _liquid_config(prefix):
     return (
         "{"
         f'"apiBase":{json.dumps(prefix)},'
+        f'"pageUrl":{json.dumps(prefix)},'
+        f'"embed":{json.dumps(embed)},'
         '"customerName":{{ customer.first_name | default: "" | json }},'
         '"cartUrl":{{ routes.cart_url | json }},'
         '"cartAddUrl":{{ routes.cart_add_url | json }},'
@@ -138,8 +144,15 @@ def _liquid_config(prefix):
 @app.get("/")
 @from_store
 def page():
+    """The chat page inside the store theme, or with ?embed=1 the bare chat (no theme header
+    or footer) that the floating window on every store page shows in an iframe."""
     prefix = _prefix()
-    body = LIQUID_HEAD + _shell(prefix, _liquid_config(prefix))
+    embed = request.args.get("embed") == "1"
+    shell = _shell(prefix, _liquid_config(prefix, embed), embed)
+    if embed:
+        body = "{%- layout none -%}" + LIQUID_HEAD + EMBED_PAGE.replace("__SHELL__", shell)
+    else:
+        body = LIQUID_HEAD + shell
     return Response(body, content_type="application/liquid; charset=utf-8",
                     headers={"Cache-Control": "no-store"})
 
@@ -175,9 +188,39 @@ def dev_page():
                              for v in lp["variants"]],
             })
         prods.append(item)
-    cfg = {"apiBase": "", "customerName": request.args.get("name", ""), "cartUrl": "/cart",
-           "cartAddUrl": "/cart/add", "offerPct": pct, "products": prods, "dev": True}
-    html = DEV_PAGE.replace("__SHELL__", _shell("", json.dumps(cfg, ensure_ascii=False)))
+    embed = request.args.get("embed") == "1"
+    cfg = {"apiBase": "", "pageUrl": "/dev", "embed": embed, "customerName": request.args.get("name", ""),
+           "cartUrl": "/cart", "cartAddUrl": "/cart/add", "offerPct": pct, "products": prods, "dev": True}
+    shell = _shell("", json.dumps(cfg, ensure_ascii=False), embed)
+    html = (EMBED_PAGE if embed else DEV_PAGE).replace("__SHELL__", shell)
+    return Response(html, content_type="text/html; charset=utf-8")
+
+
+@app.get("/dev/widget")
+def dev_widget():
+    """A fake store page carrying the floating chat window, to preview it locally."""
+    if not config.DEV:
+        abort(404)
+    snippet = _read(WIDGET_SNIPPET)
+    snippet = re.sub(r"\{%-?\s*comment\s*-?%\}.*?\{%-?\s*endcomment\s*-?%\}", "", snippet, flags=re.S)
+    snippet = re.sub(r"\{%-?.*?-?%\}", "", snippet, flags=re.S).replace("/apps/bahi-ai?embed=1", "/dev?embed=1")
+    filler = "".join(f"<p>فقرة تجريبية رقم {i} عشان الصفحة تبقى طويلة زي صفحة المتجر.</p>" for i in range(40))
+    html = ('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            '<title>معاينة نافذة باهي</title>'
+            '<script type="importmap">{"imports":{"@shopify/events":"https://cdn.shopify.com/storefront/standard-events.js"}}</script>'
+            # ?demo=1 loads the sample chat from dev.html (no AI call), ?open=1 opens the window,
+            # ?teaser=1 shows the teaser bubble right away.
+            '<script>var q=new URLSearchParams(location.search);'
+            'if(q.get("demo")){' + DEV_PAGE.split("if (/[?&]demo=1/.test(location.search)) {", 1)[1].split("} else if", 1)[0] + '}'
+            'if(q.get("teaser")){localStorage.removeItem("bahi-chat:teaser");sessionStorage.removeItem("bahi-chat:open");}'
+            'if(q.get("open"))addEventListener("load",function(){document.querySelector("[data-launcher]").click()});'
+            'if(q.get("teaser"))addEventListener("load",function(){document.querySelector("[data-teaser]").hidden=false});'
+            '</script></head>'
+            '<body style="margin:0;font-family:Tajawal,sans-serif;background:#fff;color:#0B1E3A">'
+            '<header style="background:#0B1E3A;color:#E8CD7A;padding:18px;text-align:center;font-size:22px">باهي</header>'
+            f'<main style="max-width:900px;margin:0 auto;padding:24px 16px">{filler}</main>'
+            f'{snippet}</body></html>')
     return Response(html, content_type="text/html; charset=utf-8")
 
 

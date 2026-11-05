@@ -206,3 +206,59 @@
   .bahi-ai__log { scroll-behavior: auto; }
   .bahi-ai__dots, .bahi-ai__dots::before, .bahi-ai__dots::after { animation: none; opacity: .7; }
 }
+
+/* ---------- bar parts (page + floating window) ---------- */
+.bahi-ai__who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.bahi-ai__who-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bahi-ai__actions { display: flex; align-items: center; gap: 4px; }
+.bahi-ai__embed-only { display: none !important; }
+
+/* ---------- floating window (iframe on every store page, ?embed=1) ---------- */
+.bahi-ai.bahi-ai--embed { position: fixed; inset: 0; padding: 0; background: var(--bahi-parchment); }
+.bahi-ai--embed .bahi-ai__inner { max-width: none; height: 100%; }
+.bahi-ai--embed .bahi-ai__head { display: none; }
+.bahi-ai--embed .bahi-ai__embed-only { display: inline-flex !important; }
+.bahi-ai--embed .bahi-ai__panel {
+  height: 100%; min-height: 0; border: 0; border-radius: 0; box-shadow: none;
+  background: var(--bahi-parchment);
+}
+.bahi-ai--embed .bahi-ai__bar {
+  padding: 10px 10px 10px 14px; gap: 8px;
+  background: var(--bahi-navy); border-bottom: 1px solid rgba(201, 162, 39, .35);
+}
+.bahi-ai--embed .bahi-ai__mark {
+  width: 34px; height: 34px; border-radius: 50%; flex: 0 0 34px;
+  align-items: center; justify-content: center;
+  color: var(--bahi-navy); background: linear-gradient(135deg, var(--bahi-gold-light), var(--bahi-gold));
+}
+.bahi-ai--embed .bahi-ai__name { font-family: var(--bahi-heading); font-weight: 500; font-size: 18px; line-height: 1.4; color: var(--bahi-gold-light); }
+.bahi-ai--embed .bahi-ai__status { font-size: 12px; color: rgba(243, 237, 224, .75); gap: 6px; }
+.bahi-ai--embed .bahi-ai__dot { width: 7px; height: 7px; }
+.bahi-ai--embed .bahi-ai__new {
+  color: rgba(243, 237, 224, .85); border-bottom-color: rgba(232, 205, 122, .4);
+  font-size: 12.5px; margin-inline-end: 6px; white-space: nowrap;
+}
+.bahi-ai--embed .bahi-ai__new:hover { color: var(--bahi-gold-light); border-color: var(--bahi-gold); }
+.bahi-ai__icon {
+  width: 36px; height: 36px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+  align-items: center; justify-content: center; background: transparent;
+  color: rgba(243, 237, 224, .85); text-decoration: none; transition: background .18s ease, color .18s ease;
+}
+.bahi-ai__icon:hover { background: rgba(243, 237, 224, .1); color: var(--bahi-gold-light); }
+.bahi-ai__icon:focus-visible, .bahi-ai--embed .bahi-ai__new:focus-visible { outline: 2px solid var(--bahi-gold); outline-offset: 1px; }
+.bahi-ai--embed .bahi-ai__log { padding: 16px 12px; gap: 12px; }
+.bahi-ai--embed .bahi-ai__welcome { padding: 10px 4px 0; }
+.bahi-ai--embed .bahi-ai__hello { font-size: 20px; }
+.bahi-ai--embed .bahi-ai__intro { font-size: 14.5px; line-height: 1.75; }
+.bahi-ai--embed .bahi-ai__chip { font-size: 13px; padding: 8px 14px; }
+.bahi-ai--embed .bahi-ai__bubble,
+.bahi-ai--embed .bahi-ai__msg--assistant .bahi-ai__bubble { max-width: 94%; font-size: 14.5px; line-height: 1.8; padding: 10px 13px; }
+.bahi-ai--embed .bahi-ai__msg--assistant .bahi-ai__bubble { width: 94%; }
+.bahi-ai--embed .bahi-ai__card { gap: 10px; padding: 8px; }
+.bahi-ai--embed .bahi-ai__card-media { flex-basis: 84px; }
+.bahi-ai--embed .bahi-ai__card-name { font-size: 17px; }
+.bahi-ai--embed .bahi-ai__add { padding: 8px 14px; font-size: 13.5px; }
+.bahi-ai--embed .bahi-ai__composer { padding: 10px; }
+.bahi-ai--embed .bahi-ai__composer textarea { min-height: 44px; padding: 9px 14px; }
+.bahi-ai--embed .bahi-ai__send { flex-basis: 44px; width: 44px; height: 44px; }
+.bahi-ai--embed .bahi-ai__note { padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }

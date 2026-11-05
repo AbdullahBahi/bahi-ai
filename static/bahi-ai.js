@@ -1,4 +1,6 @@
-/* Bahi AI advisor — chat UI rendered inside the store page (bahi-perfumes.com/apps/bahi-ai). */
+/* Bahi AI advisor — chat UI. Runs on the full page (bahi-perfumes.com/apps/bahi-ai) and,
+   with CFG.embed, inside the floating chat window that every store page shows in an iframe.
+   Both share the conversation through localStorage (same origin). */
 (function () {
   'use strict';
 
@@ -9,6 +11,7 @@
 
   var STORE_KEY = 'bahi-ai:chat:v1';
   var SID_KEY = 'bahi-ai:sid';
+  var PENDING_KEY = 'bahi-ai:pending'; // answer still being written, so another page can pick it up
   var MAX_STORED = 40;     // messages kept in this browser
   var MAX_SEND = 16;       // messages sent to the server per question
   var MAX_CHARS = 800;
@@ -31,6 +34,7 @@
   var input = root.querySelector('[data-bahi-input]');
   var sendBtn = root.querySelector('[data-bahi-send]');
   var newBtn = root.querySelector('[data-bahi-new]');
+  var EMBED = !!CFG.embed && window.parent !== window;
 
   // ------------------------------------------------------------------ storage (cookies don't survive the proxy)
   function load(key, fallback) {
@@ -49,12 +53,21 @@
   var sid = load(SID_KEY, null);
   if (typeof sid !== 'string' || !/^[A-Za-z0-9_-]{8,64}$/.test(sid)) { sid = randomId(); store(SID_KEY, sid); }
 
-  var messages = load(STORE_KEY, []);
-  if (!Array.isArray(messages)) messages = [];
-  messages = messages.filter(function (m) {
-    return m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string';
-  });
+  function loadMessages() {
+    var list = load(STORE_KEY, []);
+    if (!Array.isArray(list)) return [];
+    return list.filter(function (m) {
+      return m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string';
+    });
+  }
+  var messages = loadMessages();
   function save() { messages = messages.slice(-MAX_STORED); store(STORE_KEY, messages); }
+  function setPending(job) {
+    try {
+      if (job) window.localStorage.setItem(PENDING_KEY, JSON.stringify({ job: job, t: Date.now() }));
+      else window.localStorage.removeItem(PENDING_KEY);
+    } catch (e) { /* private mode */ }
+  }
 
   var busy = false;
   var live = null;         // {el, cards} of the answer being written
@@ -186,7 +199,7 @@
 
     add.addEventListener('click', function () {
       if (!chosen) return;
-      if (add.getAttribute('data-done')) { window.location.href = CFG.cartUrl || '/cart'; return; }
+      if (add.getAttribute('data-done')) { go(CFG.cartUrl || '/cart'); return; }
       if (CFG.dev) { add.textContent = 'متاح على المتجر الحقيقي فقط'; return; }
       add.disabled = true;
       add.textContent = 'جارٍ الإضافة…';
@@ -201,11 +214,7 @@
         add.disabled = false;
         add.setAttribute('data-done', '1');
         add.textContent = '✓ أُضيف — إتمام الطلب';
-        // Let the theme refresh its cart count/drawer if it listens for this event.
-        document.dispatchEvent(new CustomEvent('cart:update', {
-          bubbles: true,
-          detail: { resource: cart, sourceId: 'bahi-ai', data: { itemCount: cart.item_count, source: 'bahi-ai' } }
-        }));
+        cartChanged(cart, chosen.id);
       }).catch(function () {
         add.disabled = false;
         add.textContent = 'حاول تاني';
@@ -218,6 +227,38 @@
     card.appendChild(body);
     paint();
     return card;
+  }
+
+  // ------------------------------------------------------------------ store page integration
+  // Open a store page in the whole tab, also from inside the floating window's iframe.
+  function go(url) {
+    if (EMBED) window.parent.postMessage({ type: 'bahi-ai:leave' }, location.origin);
+    try { (window.top || window).location.href = url; } catch (e) { window.location.href = url; }
+  }
+
+  // Tell the theme the cart changed so its cart count / drawer refresh. In the floating
+  // window that happens in the store page around the iframe, so it is asked to do it.
+  function cartChanged(cart, variantId) {
+    if (EMBED) {
+      window.parent.postMessage({ type: 'bahi-ai:cart', cart: cart, variantId: variantId }, location.origin);
+      return;
+    }
+    themeCartEvent(document, cart, variantId);
+  }
+  // Same code as in the theme snippet (snippets/bahi-ai-widget.liquid).
+  function themeCartEvent(doc, cart, variantId) {
+    // Horizon listens for Shopify's standard cart event (importmap: @shopify/events).
+    import('@shopify/events').then(function (m) {
+      var E = m.CartLinesUpdateEvent;
+      var d = E.createPromise();
+      doc.dispatchEvent(new E({ action: 'add', context: 'product',
+        lines: [{ merchandiseId: String(variantId), quantity: 1 }], promise: d.promise }));
+      d.resolve({ cart: E.createCartFromAjaxResponse(cart),
+        detail: { items: cart.items, itemCount: cart.item_count, source: 'bahi-ai', sourceId: 'bahi-ai', didError: false } });
+    }).catch(function () {
+      doc.dispatchEvent(new CustomEvent('cart:update', { bubbles: true,
+        detail: { resource: cart, sourceId: 'bahi-ai', data: { itemCount: cart.item_count, source: 'bahi-ai' } } }));
+    });
   }
 
   // ------------------------------------------------------------------ messages
@@ -347,6 +388,7 @@
     }).then(function (res) {
       if (!res.ok || !res.d.job) throw { userMessage: res.d.error };
       pollUntil = Date.now() + MAX_WAIT_MS;
+      setPending(res.d.job);
       poll(res.d.job, 0);
     }).catch(function (err) { fail(err && err.userMessage, text); });
   }
@@ -377,7 +419,10 @@
   }
 
   function finish(text) {
-    messages.push({ role: 'assistant', content: text });
+    setPending(null);
+    messages = loadMessages();  // another page may have finished this answer already
+    var last = messages[messages.length - 1];
+    if (!last || last.role !== 'assistant' || last.content !== text) messages.push({ role: 'assistant', content: text });
     save();
     setBusy(false);
     render();
@@ -386,6 +431,7 @@
 
   // The question didn't go through: take it back out of the history and offer it again.
   function fail(message, text) {
+    setPending(null);
     if (text != null && messages.length && messages[messages.length - 1].role === 'user') {
       messages.pop();
       save();
@@ -415,5 +461,44 @@
     input.focus();
   });
 
-  render();
+  // An answer started on another page (or before the customer moved to another page) is
+  // still being written on the server: keep showing it here.
+  function resumePending() {
+    var p = load(PENDING_KEY, null);
+    var last = messages[messages.length - 1];
+    if (!p || typeof p.job !== 'string' || !(Date.now() - p.t < MAX_WAIT_MS) || !last || last.role !== 'user') return false;
+    setBusy(true);
+    render();
+    startLive();
+    pollUntil = p.t + MAX_WAIT_MS;
+    poll(p.job, 0);
+    return true;
+  }
+
+  // The floating window and the full page (other tabs too) share one conversation.
+  window.addEventListener('storage', function (e) {
+    if (busy || (e.key !== STORE_KEY && e.key !== PENDING_KEY && e.key !== null)) return;
+    messages = loadMessages();
+    if (!resumePending()) render();
+  });
+
+  if (EMBED) {
+    var closeBtn = root.querySelector('[data-bahi-close]');
+    var expand = root.querySelector('[data-bahi-expand]');
+    function closeWindow() { window.parent.postMessage({ type: 'bahi-ai:close' }, location.origin); }
+    if (closeBtn) closeBtn.addEventListener('click', closeWindow);
+    if (expand) {
+      expand.href = CFG.pageUrl || '/apps/bahi-ai';
+      expand.addEventListener('click', function () { window.parent.postMessage({ type: 'bahi-ai:leave' }, location.origin); });
+    }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeWindow(); });
+    // The store page tells the window when it is shown, so the cursor lands in the box.
+    window.addEventListener('message', function (e) {
+      if (e.origin === location.origin && e.data && e.data.type === 'bahi-ai:shown' && !matchMedia('(pointer: coarse)').matches) {
+        input.focus({ preventScroll: true });
+      }
+    });
+  }
+
+  if (!resumePending()) render();
 })();
