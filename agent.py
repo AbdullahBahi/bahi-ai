@@ -128,7 +128,7 @@ def _stream_completion(messages, tools, job, allow_tools):
     with job.lock:
         visible_from = len(job.text)
     hidden = False
-    with requests.post(config.OPENROUTER_URL, json=payload, headers=headers,
+    with net.session() as s, s.post(config.OPENROUTER_URL, json=payload, headers=headers,
                        stream=True, timeout=(10, 30)) as r:
         if r.status_code != 200:
             raise RuntimeError(f"OpenRouter HTTP {r.status_code}: {r.text[:300]}")

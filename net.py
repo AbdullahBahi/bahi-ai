@@ -53,8 +53,17 @@ def request(method, url, total, **kw):
     within `total` seconds, otherwise requests.Timeout is raised."""
     deadline = time.monotonic() + total
     step = min(STEP, total)
-    with requests.request(method, url, stream=True, timeout=(step, step), **kw) as r:
+    with session() as s, s.request(method, url, stream=True, timeout=(step, step), **kw) as r:
         body = b"".join(chunks(r, deadline, f"{method} {url}"))
         r._content = body  # lets r.json() / r.text work after the stream is closed
         r._content_consumed = True
     return r
+
+
+def session():
+    """A requests session that skips the environment lookups (~/.netrc, proxy variables)
+    requests otherwise does on every call. We use none of them, and the netrc lookup
+    re-enters Python's import system on each request, where an answer once got stuck."""
+    s = requests.Session()
+    s.trust_env = False
+    return s

@@ -14,9 +14,10 @@ TAVILY_URL = "https://api.tavily.com/search"
 TOOL = {"type": "function", "function": {
     "name": "web_search",
     "description": (
-        "Search the live web. LAST RESORT ONLY: use it just for perfume questions that the Bahi "
-        "catalogue, the Scento perfume database and your own knowledge cannot answer reliably "
-        "(e.g. a perfume released in the last months, recent news about a perfume house). "
+        "Search the live web. LAST RESORT: use it for perfume questions that the Bahi catalogue "
+        "and the Scento perfume database cannot answer, especially (1) a perfume the Scento "
+        "database doesn't have (search its notes, e.g. 'Zara Red Temptation perfume notes'), "
+        "(2) a perfume released in the last months, (3) recent news about a perfume house. "
         "Never use it for Bahi products or for anything unrelated to perfume."),
     "parameters": {"type": "object", "properties": {
         "query": {"type": "string", "description": "Short, focused English search query (under 15 words)."},

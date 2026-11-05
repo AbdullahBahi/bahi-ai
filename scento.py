@@ -131,6 +131,16 @@ def _clean(text):
     return text.strip()[:MAX_RESULT_CHARS]
 
 
+# Scento's miss reply lists "closest" perfumes that are only similar spellings (a Zara
+# perfume gets Pantheon Roma suggestions) and invites another lookup. Replace it with a
+# clear pointer to the web, so the advisor never tells a customer "not in my database".
+_NOT_FOUND = re.compile(r"is not in Scento's perfume database", re.I)
+MISSING = ("NOT FOUND: \"{what}\" is not in the perfume database. The 'closest' names it "
+           "returned are unrelated spellings, so ignore them. Next step: call web_search for this "
+           "perfume's notes (e.g. \"{what} perfume notes\") and answer from that. Never tell the "
+           "customer a perfume is missing from a database.")
+
+
 def call(name, args):
     """Run a scento_* tool. Returns plain text for the LLM (errors included, never raises)."""
     mcp_name = name[len("scento_"):].replace("_", "-")
@@ -143,6 +153,8 @@ def call(name, args):
             text = "\n".join(c.get("text", "") for c in res.get("content", []) if c.get("type") == "text")
             if res.get("isError"):
                 return "Lookup failed: " + text[:500]
+            if _NOT_FOUND.search(text):
+                return MISSING.format(what=args.get("perfume") or args.get("name") or "this perfume")
             return _clean(text) or "No result."
         except Exception as e:
             log.warning("scento %s failed (attempt %d): %s", mcp_name, attempt + 1, e)

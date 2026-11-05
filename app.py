@@ -57,6 +57,7 @@ MSG = {
 def _warm_up():
     """Load the Scento tool list and live prices in the background so the first customer
     doesn't wait for them."""
+    log.info("web search: %s", "on" if config.TAVILY_API_KEY else "OFF (TAVILY_API_KEY is not set)")
     try:
         scento.openai_tools()
         catalog.live_products()
