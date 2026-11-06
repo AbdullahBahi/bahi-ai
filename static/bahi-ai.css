@@ -27,6 +27,10 @@
   font-family: var(--bahi-heading); font-weight: 500; line-height: 1.3;
   font-size: clamp(28px, 4.4vw, 42px); color: var(--bahi-navy); margin: 0 0 8px;
 }
+.bahi-ai__title-tag {
+  display: block; margin-top: 2px; font-family: var(--bahi-body); font-weight: 500;
+  font-size: clamp(15px, 1.9vw, 18px); color: var(--bahi-bronze); letter-spacing: .2px;
+}
 .bahi-ai__sub { margin: 0; font-size: 15px; color: var(--bahi-bronze); }
 .bahi-ai__rule { width: 64px; height: 1px; background: var(--bahi-gold); margin: 18px auto 0; position: relative; }
 .bahi-ai__rule::after {
@@ -192,8 +196,59 @@
 .bahi-ai__note { margin: 0; padding: 0 14px 10px; background: #fff; font-size: 11.5px; color: #9a917f; text-align: center; }
 .bahi-ai__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+/* ---------- guide under the chat (full page only) ---------- */
+.bahi-ai__guide { margin-top: 56px; display: flex; flex-direction: column; gap: 48px; }
+.bahi-ai__h2 {
+  font-family: var(--bahi-heading); font-weight: 500; line-height: 1.4;
+  font-size: clamp(22px, 3vw, 28px); color: var(--bahi-navy); margin: 0 0 8px; text-align: center;
+}
+.bahi-ai__lead { margin: 0 auto 22px; max-width: 620px; text-align: center; font-size: 15px; line-height: 1.85; color: #3b4659; }
+.bahi-ai__help { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.bahi-ai__help-item {
+  display: flex; flex-direction: column; gap: 6px; padding: 18px;
+  background: rgba(255, 255, 255, .72); border: 1px solid var(--bahi-line); border-radius: 6px;
+}
+.bahi-ai__help-item h3 { margin: 0; font-family: var(--bahi-heading); font-weight: 500; font-size: 18px; line-height: 1.45; color: var(--bahi-navy); }
+.bahi-ai__help-item p { margin: 0 0 6px; font-size: 14.5px; line-height: 1.8; color: #3b4659; }
+.bahi-ai__ask {
+  align-self: flex-start; margin-top: auto; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+  padding: 0 0 2px; background: none; border: 0; border-bottom: 1px solid var(--bahi-gold); color: var(--bahi-bronze);
+  transition: color .18s ease;
+}
+.bahi-ai__ask:hover { color: var(--bahi-navy); }
+.bahi-ai__ask:focus-visible, .bahi-ai__faq-item summary:focus-visible { outline: 2px solid var(--bahi-gold); outline-offset: 3px; }
+
+.bahi-ai__matches { list-style: none; margin: 0; padding: 0; border: 1px solid var(--bahi-line); border-radius: 6px; background: rgba(255, 255, 255, .72); }
+.bahi-ai__match { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; padding: 14px 18px; }
+.bahi-ai__match + .bahi-ai__match { border-top: 1px solid var(--bahi-line); }
+.bahi-ai__match small { display: block; font-size: 12.5px; color: var(--bahi-bronze); margin-top: 2px; }
+.bahi-ai__match-src { font-size: 15px; color: #3b4659; }
+.bahi-ai__match-src [lang="en"] { display: block; text-align: right; }
+.bahi-ai__match-arrow { color: var(--bahi-gold); font-size: 18px; }
+.bahi-ai__match-bahi a {
+  font-family: var(--bahi-heading); font-size: 20px; font-weight: 500; color: var(--bahi-navy);
+  text-decoration: none; border-bottom: 1px solid var(--bahi-line);
+}
+.bahi-ai__match-bahi a:hover { color: var(--bahi-bronze); border-color: var(--bahi-gold); }
+.bahi-ai__more { margin: 16px 0 0; text-align: center; }
+
+.bahi-ai__faq { border-top: 1px solid var(--bahi-line); }
+.bahi-ai__faq-item { border-bottom: 1px solid var(--bahi-line); }
+.bahi-ai__faq-item summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 2px; cursor: pointer; list-style: none;
+}
+.bahi-ai__faq-item summary::-webkit-details-marker { display: none; }
+.bahi-ai__faq-item summary::after { content: "+"; flex: 0 0 auto; font-size: 22px; line-height: 1; color: var(--bahi-gold); }
+.bahi-ai__faq-item[open] summary::after { content: "−"; }
+.bahi-ai__faq-item h3 { margin: 0; font-family: var(--bahi-body); font-size: 16.5px; font-weight: 700; line-height: 1.6; color: var(--bahi-navy); }
+.bahi-ai__faq-item p { margin: 0; padding: 0 2px 18px; font-size: 15px; line-height: 1.9; color: #3b4659; }
+
 @media (max-width: 749px) {
   .bahi-ai { padding: 24px 12px 32px; }
+  .bahi-ai__guide { margin-top: 40px; gap: 40px; }
+  .bahi-ai__match { padding: 12px 14px; gap: 8px; }
+  .bahi-ai__match-bahi a { font-size: 18px; }
   .bahi-ai__head { margin-bottom: 18px; }
   .bahi-ai__panel { height: calc(100svh - 120px); min-height: 440px; }
   .bahi-ai__log { padding: 16px 12px; }

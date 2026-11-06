@@ -456,6 +456,18 @@
     input.focus();
   });
 
+  // "اسأل باهي" buttons in the guide under the chat (full page only): back up to the chat
+  // and ask that question (or leave it in the box if an answer is still being written).
+  root.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-bahi-ask]');
+    if (!b) return;
+    var q = b.getAttribute('data-bahi-ask');
+    var panel = root.querySelector('.bahi-ai__panel');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (busy) { input.value = q; autosize(); return; }
+    send(q);
+  });
+
   // An answer started on another page (or before the customer moved to another page) is
   // still being written on the server: keep showing it here.
   function resumePending() {

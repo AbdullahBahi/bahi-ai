@@ -18,6 +18,7 @@ import catalog
 import config
 import limits
 import scento
+import seo
 from proxy_auth import from_store
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -95,7 +96,11 @@ def _asset(name, prefix):
 
 
 def _shell(prefix, config_js, embed=False):
+    # The guide and structured data are for search engines and people on the full page;
+    # the floating window only needs the chat.
     return (SHELL.replace("__MODE__", "bahi-ai--embed" if embed else "")
+                 .replace("__GUIDE__", "" if embed else seo.GUIDE)
+                 .replace("__JSONLD__", "" if embed else seo.JSON_LD)
                  .replace("__CSS__", _asset("bahi-ai.css", prefix))
                  .replace("__JS__", _asset("bahi-ai.js", prefix))
                  .replace("__CONFIG__", config_js))
